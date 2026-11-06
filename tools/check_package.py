@@ -11,6 +11,8 @@ def check(path):
     expected = {
         "PetPantry/Bindings.xml", "PetPantry/CHANGELOG.md", "PetPantry/LICENSE.txt",
         "PetPantry/PetPantry.lua", "PetPantry/PetPantry.toc",
+        "PetPantry/Locales/enUS.lua", "PetPantry/Locales/deDE.lua",
+        "PetPantry/TRANSLATING.md",
         "PetPantry/Sounds/crunch.ogg", "PetPantry/Sounds/fanfare.ogg", "PetPantry/Sounds/whimper.ogg",
     }
     with zipfile.ZipFile(path) as archive:
@@ -24,7 +26,9 @@ def check(path):
             if line.strip() and not line.startswith("#"):
                 assert "PetPantry/" + line.strip().replace("\\", "/") in files
         ET.fromstring(archive.read("PetPantry/Bindings.xml"))
-        LuaRuntime().execute("assert(loadstring(...))", archive.read("PetPantry/PetPantry.lua").decode("utf-8-sig"))
+        for name in files:
+            if name.endswith(".lua"):
+                LuaRuntime().execute("assert(loadstring(...))", archive.read(name).decode("utf-8-sig"))
         for name in files:
             if name.endswith(".ogg"):
                 assert archive.read(name).startswith(b"OggS"), f"Invalid sound: {name}"

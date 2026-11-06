@@ -53,3 +53,16 @@ the in-game smoke test has not yet been confirmed. The CurseForge upload secret
 is configured. Check GitHub Actions and CurseForge for the release delivery status.
 
 Local working copy: `C:\Users\Matt\Documents\PetPantry`.
+
+## Translations
+
+Version **1.0.2** adds separate text files. German translators can edit
+[`Locales/deDE.lua`](Locales/deDE.lua); English defaults are in
+[`Locales/enUS.lua`](Locales/enUS.lua). German clients automatically use the
+German overrides, and unfinished entries stay in English. A few German labels
+are provided as examples; the full German translation is still open for contributions.
+
+Read [TRANSLATING.md](TRANSLATING.md) for examples and formatting rules. Both locale
+files and the guide ship inside the addon ZIP, so translators do not need access
+to this private repository. The text covers controls, tooltips, warnings, moods,
+titles, species sounds, and pet dialogue. Game-provided names stay localized by WoW.

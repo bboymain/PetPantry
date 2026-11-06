@@ -2,6 +2,7 @@
 from pathlib import Path
 import unittest
 import zipfile
+import re
 
 from lupa.lua51 import LuaRuntime
 
@@ -10,11 +11,16 @@ SOURCE = (ROOT.parent / "PetPantry.lua").read_text(encoding="utf-8-sig")
 MOCK = (ROOT / "wow_mock.lua").read_text(encoding="utf-8")
 
 
-def client(setup="", source=SOURCE):
+def client(setup="", source=SOURCE, translations=""):
     lua = LuaRuntime()
     lua.execute(MOCK)
     lua.execute(setup)
-    lua.execute(source, name="@Interface/AddOns/PetPantry/PetPantry.lua")
+    namespace = lua.table()
+    lua.globals().addonNS = namespace
+    for name in ("enUS", "deDE"):
+        lua.execute((ROOT.parent / f"Locales/{name}.lua").read_text(encoding="utf-8"), "PetPantry", namespace)
+    lua.execute(translations)
+    lua.execute(source, "PetPantry", namespace, name="@Interface/AddOns/PetPantry/PetPantry.lua")
     lua.execute('fire("PLAYER_LOGIN")')
     return lua
 
@@ -152,6 +158,94 @@ class ReleaseTests(unittest.TestCase):
             for _, fn in ipairs(state.tickers) do fn() end
             assert(#state.chat == 0)
         ''')
+
+    def test_locale_selection_and_untranslated_fallbacks(self):
+        for locale in ("enUS", "enGB", "frFR", "deDE"):
+            with self.subTest(locale=locale):
+                lua = client(f'state.locale = "{locale}"')
+                lua.execute('SlashCmdList.PETPANTRY("")')
+                self.assertEqual(lua.eval("addonNS.L.SETTINGS"), "EINSTELLUNGEN" if locale == "deDE" else "SETTINGS")
+                self.assertTrue(lua.eval('hasText(addonNS.L.SETTINGS)'))
+                self.assertEqual(lua.eval("addonNS.L.NO_FOOD"), "No listed pet food in your bags (/pfeed)")
+                self.assertEqual(lua.eval("addonNS.L.CHATTER[1][1]"), "I could eat a murloc. Raw.")
+
+    def test_partial_dialogue_translation_and_german_family_sound(self):
+        lua = client('state.locale = "deDE"; function UnitCreatureFamily() return "Katze" end', translations='''
+            addonNS.L.NOISES.Cat = "*schnurrt*"
+            addonNS.L.CHATTER[2][1] = "{noise} Ein Snack wäre gut."
+            function math.random(n) return n and 1 or 0 end
+        ''')
+        lua.execute('''
+            assert(hasText("*schnurrt* Ein Snack wäre gut."))
+            assert(addonNS.L.CHATTER[2][2] == "I'm fine. Mostly.")
+            for _, family in pairs(addonNS.L.FAMILY_KEYS) do
+                assert(addonNS.L.NOISES[family] and addonNS.L.FAMILY_IDLE[family])
+            end
+        ''')
+
+    def test_translated_format_strings_reach_vendor_card_and_xp(self):
+        lua = client('state.locale = "deDE"; function GetPetExperience() return 250, 1000 end', translations='''
+            addonNS.L.LEVEL = "Stufe %d"
+            addonNS.L.PET_INFO = "%s  Stufe %d %s  |cff808080%s|r"
+            addonNS.L.VENDOR_FOOD = "|cffffd24dPet Pantry:|r %s frisst: %s"
+            addonNS.L.MEAL_COUNT_MANY = "%d Mahlzeiten"
+        ''')
+        lua.execute('''
+            SlashCmdList.PETPANTRY("")
+            fire("MERCHANT_SHOW")
+            assert(hasText("Stufe 20"))
+            assert(hasText("0 Mahlzeiten"))
+            assert(hasText("Whiskers frisst: item:117"))
+            assert(hasText("25%"))
+            assert(_G["BINDING_NAME_CLICK PetPantryButton:LeftButton"] == "Begleiter füttern")
+        ''')
+
+    def test_translation_template_completeness_and_format_safety(self):
+        def flatten(table, path="L"):
+            result = {}
+            for key in table.keys():
+                if path == "L" and key == "FAMILY_KEYS":
+                    continue
+                suffix = f"[{key}]" if isinstance(key, (int, float)) else (f".{key}" if key.isidentifier() else f'["{key}"]')
+                value = table[key]
+                if hasattr(value, "keys"):
+                    result.update(flatten(value, path + suffix))
+                else:
+                    result[path + suffix] = value
+            return result
+
+        default = flatten(client().globals().addonNS.L)
+        german = flatten(client('state.locale = "deDE"').globals().addonNS.L)
+        self.assertEqual(set(default), set(german))
+        template = (ROOT.parent / "Locales/deDE.lua").read_text(encoding="utf-8")
+        paths = set(re.findall(r"^(?:-- )?(L[^=\n]+?)\s*=", template, re.MULTILINE))
+        for path, value in default.items():
+            with self.subTest(path=path):
+                translated = german[path]
+                if isinstance(value, str):
+                    self.assertIn(path, paths)
+                    self.assertIsInstance(translated, str)
+                    self.assertTrue(translated)
+                    self.assertEqual(re.findall(r"%[-+ #0]*\d*(?:\.\d+)?[cdeEfgGiouXxqs%]", value), re.findall(r"%[-+ #0]*\d*(?:\.\d+)?[cdeEfgGiouXxqs%]", translated))
+                    self.assertEqual(value.count("{noise}"), translated.count("{noise}"))
+                    self.assertEqual(re.findall(r"\|c[0-9a-fA-F]{8}|\|r", value), re.findall(r"\|c[0-9a-fA-F]{8}|\|r", translated))
+                else:
+                    self.assertEqual(value, translated)
+
+        # Every supplied example must remain valid when a translator uncomments it.
+        uncommented = re.sub(r"^-- (L[^\n]+ = )", r"\1", template, flags=re.MULTILINE)
+        lua = LuaRuntime()
+        lua.execute('function GetLocale() return "deDE" end')
+        namespace = lua.table()
+        lua.execute((ROOT.parent / "Locales/enUS.lua").read_text(encoding="utf-8"), "PetPantry", namespace)
+        lua.execute(uncommented, "PetPantry", namespace)
+        self.assertEqual(set(default), set(flatten(namespace.L)))
+
+    def test_toc_loads_locales_before_core(self):
+        files = [line.strip().replace("\\", "/") for line in (ROOT.parent / "PetPantry.toc").read_text().splitlines() if line.strip() and not line.startswith("#")]
+        self.assertEqual(files, ["Locales/enUS.lua", "Locales/deDE.lua", "PetPantry.lua"])
+        for name in files:
+            self.assertTrue((ROOT.parent / name).is_file())
 
 
 if __name__ == "__main__":

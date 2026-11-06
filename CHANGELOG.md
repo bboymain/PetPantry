@@ -1,5 +1,12 @@
 # Pet Pantry
 
+## 1.0.2 — Translation support
+- Moved interface text, warnings, tooltips, and pet dialogue into Locales/enUS.lua.
+- Added Locales/deDE.lua with German starter labels and a complete translation template.
+- Automatically selects German overrides on German clients; untranslated entries keep English defaults.
+- Preserves family-specific sounds and chatter for German pet-family names.
+- Added checks for locale loading, fallbacks, formatting placeholders, and packaged language files.
+
 ## 1.0.1 — WoW Forever compatibility fixes
 - Fixed an error when opening a food vendor by using Forever's current merchant item API.
 - Restored pet loyalty text and debug snapshots using the current pet API.

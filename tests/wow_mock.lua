@@ -125,6 +125,7 @@ function GetCursorInfo() end
 function ClearCursor() end
 function GetCursorPosition() return 100, 100 end
 function GetBuildInfo() return "1.60.1", "70790", "", 16001 end
+function GetLocale() return state.locale or "enUS" end
 date = os.date
 function print(...) table.insert(state.messages, table.concat({...}, " ")) end
 function tContains(list, value) for _, v in ipairs(list) do if v == value then return true end end return false end
