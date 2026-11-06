@@ -56,13 +56,14 @@ Local working copy: `C:\Users\Matt\Documents\PetPantry`.
 
 ## Translations
 
-Version **1.0.2** adds separate text files. German translators can edit
-[`Locales/deDE.lua`](Locales/deDE.lua); English defaults are in
-[`Locales/enUS.lua`](Locales/enUS.lua). German clients automatically use the
-German overrides, and unfinished entries stay in English. A few German labels
-are provided as examples; the full German translation is still open for contributions.
+Version **1.0.2** adds separate text files for all supported WoW client locales.
+Edit the matching file in [`Locales/`](Locales/); English defaults are in
+[`Locales/enUS.lua`](Locales/enUS.lua). The active client language automatically
+selects its overrides, and unfinished entries stay in English. A few German
+labels are provided as examples; the other new files are translation templates,
+not finished translations.
 
-Read [TRANSLATING.md](TRANSLATING.md) for examples and formatting rules. Both locale
+Read [TRANSLATING.md](TRANSLATING.md) for examples and formatting rules. All locale
 files and the guide ship inside the addon ZIP, so translators do not need access
 to this private repository. The text covers controls, tooltips, warnings, moods,
 titles, species sounds, and pet dialogue. Game-provided names stay localized by WoW.

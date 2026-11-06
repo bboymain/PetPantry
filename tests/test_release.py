@@ -9,6 +9,7 @@ from lupa.lua51 import LuaRuntime
 ROOT = Path(__file__).resolve().parent
 SOURCE = (ROOT.parent / "PetPantry.lua").read_text(encoding="utf-8-sig")
 MOCK = (ROOT / "wow_mock.lua").read_text(encoding="utf-8")
+LOCALES = ("enUS", "deDE", "esES", "esMX", "frFR", "itIT", "koKR", "ptBR", "ruRU", "zhCN", "zhTW")
 
 
 def client(setup="", source=SOURCE, translations=""):
@@ -17,7 +18,7 @@ def client(setup="", source=SOURCE, translations=""):
     lua.execute(setup)
     namespace = lua.table()
     lua.globals().addonNS = namespace
-    for name in ("enUS", "deDE"):
+    for name in LOCALES:
         lua.execute((ROOT.parent / f"Locales/{name}.lua").read_text(encoding="utf-8"), "PetPantry", namespace)
     lua.execute(translations)
     lua.execute(source, "PetPantry", namespace, name="@Interface/AddOns/PetPantry/PetPantry.lua")
@@ -160,7 +161,7 @@ class ReleaseTests(unittest.TestCase):
         ''')
 
     def test_locale_selection_and_untranslated_fallbacks(self):
-        for locale in ("enUS", "enGB", "frFR", "deDE"):
+        for locale in (*LOCALES, "enGB", "ptPT", "unknown"):
             with self.subTest(locale=locale):
                 lua = client(f'state.locale = "{locale}"')
                 lua.execute('SlashCmdList.PETPANTRY("")')
@@ -215,35 +216,72 @@ class ReleaseTests(unittest.TestCase):
             return result
 
         default = flatten(client().globals().addonNS.L)
-        german = flatten(client('state.locale = "deDE"').globals().addonNS.L)
-        self.assertEqual(set(default), set(german))
-        template = (ROOT.parent / "Locales/deDE.lua").read_text(encoding="utf-8")
-        paths = set(re.findall(r"^(?:-- )?(L[^=\n]+?)\s*=", template, re.MULTILINE))
-        for path, value in default.items():
-            with self.subTest(path=path):
-                translated = german[path]
-                if isinstance(value, str):
-                    self.assertIn(path, paths)
-                    self.assertIsInstance(translated, str)
-                    self.assertTrue(translated)
-                    self.assertEqual(re.findall(r"%[-+ #0]*\d*(?:\.\d+)?[cdeEfgGiouXxqs%]", value), re.findall(r"%[-+ #0]*\d*(?:\.\d+)?[cdeEfgGiouXxqs%]", translated))
-                    self.assertEqual(value.count("{noise}"), translated.count("{noise}"))
-                    self.assertEqual(re.findall(r"\|c[0-9a-fA-F]{8}|\|r", value), re.findall(r"\|c[0-9a-fA-F]{8}|\|r", translated))
-                else:
-                    self.assertEqual(value, translated)
+        formatter = LuaRuntime().eval("string.format")
+        for locale in LOCALES[1:]:
+            catalog = flatten(client(f'state.locale = "{locale}"').globals().addonNS.L)
+            self.assertEqual(set(default), set(catalog), locale)
+            template = (ROOT.parent / f"Locales/{locale}.lua").read_text(encoding="utf-8")
+            paths = set(re.findall(r"^(?:-- )?(L[^=\n]+?)\s*=", template, re.MULTILINE))
+            for path, value in default.items():
+                with self.subTest(locale=locale, path=path):
+                    translated = catalog[path]
+                    if isinstance(value, str):
+                        self.assertIn(path, paths)
+                        self.assertIsInstance(translated, str)
+                        self.assertTrue(translated)
+                        formats = re.findall(r"%[-+ #0]*\d*(?:\.\d+)?[cdeEfgGiouXxqs%]", value)
+                        self.assertEqual(formats, re.findall(r"%[-+ #0]*\d*(?:\.\d+)?[cdeEfgGiouXxqs%]", translated))
+                        self.assertEqual(value.count("{noise}"), translated.count("{noise}"))
+                        self.assertEqual(re.findall(r"\|c[0-9a-fA-F]{8}|\|r", value), re.findall(r"\|c[0-9a-fA-F]{8}|\|r", translated))
+                        if "%" in translated:
+                            formatter(translated, *["sample" if token.endswith(("s", "q")) else 1 for token in formats if token != "%%"])
+                    else:
+                        self.assertEqual(value, translated)
 
-        # Every supplied example must remain valid when a translator uncomments it.
-        uncommented = re.sub(r"^-- (L[^\n]+ = )", r"\1", template, flags=re.MULTILINE)
-        lua = LuaRuntime()
-        lua.execute('function GetLocale() return "deDE" end')
-        namespace = lua.table()
-        lua.execute((ROOT.parent / "Locales/enUS.lua").read_text(encoding="utf-8"), "PetPantry", namespace)
-        lua.execute(uncommented, "PetPantry", namespace)
-        self.assertEqual(set(default), set(flatten(namespace.L)))
+            # Every supplied example must remain valid when a translator uncomments it.
+            uncommented = re.sub(r"^-- (L[^\n]+ = )", r"\1", template, flags=re.MULTILINE)
+            lua = LuaRuntime()
+            lua.execute(f'function GetLocale() return "{locale}" end')
+            namespace = lua.table()
+            lua.execute((ROOT.parent / "Locales/enUS.lua").read_text(encoding="utf-8"), "PetPantry", namespace)
+            lua.execute(uncommented, "PetPantry", namespace)
+            self.assertEqual(set(default), set(flatten(namespace.L)), locale)
+
+    def test_only_matching_locale_can_override_text(self):
+        for active in (*LOCALES, "enGB", "unknown"):
+            with self.subTest(locale=active):
+                lua = LuaRuntime()
+                lua.execute(f'function GetLocale() return "{active}" end')
+                namespace = lua.table()
+                lua.execute((ROOT.parent / "Locales/enUS.lua").read_text(encoding="utf-8"), "PetPantry", namespace)
+                for locale in LOCALES[1:]:
+                    source = (ROOT.parent / f"Locales/{locale}.lua").read_text(encoding="utf-8")
+                    source += f'\nL.NEXT = "marker-{locale}"\n'
+                    lua.execute(source, "PetPantry", namespace)
+                self.assertEqual(namespace.L.NEXT, f"marker-{active}" if active in LOCALES[1:] else "NEXT")
+
+    def test_feeding_and_combat_across_all_locales(self):
+        for locale in LOCALES:
+            with self.subTest(locale=locale):
+                lua = client(f'state.locale = "{locale}"; PetPantryDB = {{foods = {{117}}, meals = {{Whiskers = 49}}}}')
+                lua.execute('''
+                    assert(PetPantryButton:GetAttribute("type1") == "spell")
+                    assert(PetPantryButton:GetAttribute("target-slot1") == 1)
+                    fire("MERCHANT_SHOW")
+                    fire("UNIT_SPELLCAST_SUCCEEDED", "player", "castGUID", 6991)
+                    assert(PetPantryDB.meals.Whiskers == 50)
+                    combat(true)
+                    fire("BAG_UPDATE_DELAYED")
+                    assert(PetPantryButton:GetAttribute("type1") == nil)
+                    assert(PetFrame:GetAttribute("*type1") == "target")
+                    combat(false)
+                    assert(PetPantryButton:GetAttribute("type1") == "spell")
+                    assert(PetPantryDB.foods[1] == 117)
+                ''')
 
     def test_toc_loads_locales_before_core(self):
         files = [line.strip().replace("\\", "/") for line in (ROOT.parent / "PetPantry.toc").read_text().splitlines() if line.strip() and not line.startswith("#")]
-        self.assertEqual(files, ["Locales/enUS.lua", "Locales/deDE.lua", "PetPantry.lua"])
+        self.assertEqual(files, [*(f"Locales/{locale}.lua" for locale in LOCALES), "PetPantry.lua"])
         for name in files:
             self.assertTrue((ROOT.parent / name).is_file())
 

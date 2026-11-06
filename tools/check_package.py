@@ -12,6 +12,9 @@ def check(path):
         "PetPantry/Bindings.xml", "PetPantry/CHANGELOG.md", "PetPantry/LICENSE.txt",
         "PetPantry/PetPantry.lua", "PetPantry/PetPantry.toc",
         "PetPantry/Locales/enUS.lua", "PetPantry/Locales/deDE.lua",
+        "PetPantry/Locales/esES.lua", "PetPantry/Locales/esMX.lua", "PetPantry/Locales/frFR.lua",
+        "PetPantry/Locales/itIT.lua", "PetPantry/Locales/koKR.lua", "PetPantry/Locales/ptBR.lua",
+        "PetPantry/Locales/ruRU.lua", "PetPantry/Locales/zhCN.lua", "PetPantry/Locales/zhTW.lua",
         "PetPantry/TRANSLATING.md",
         "PetPantry/Sounds/crunch.ogg", "PetPantry/Sounds/fanfare.ogg", "PetPantry/Sounds/whimper.ogg",
     }

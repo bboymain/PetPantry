@@ -1,12 +1,27 @@
 # Translating Pet Pantry
 
-For German, edit **`Locales/deDE.lua`**. The addon loads it automatically when WoW's
-language is German (`deDE`). `Locales/enUS.lua` supplies English defaults on every
-client. You do not need to edit `PetPantry.lua`.
+Edit the file matching your WoW client language. The addon selects its overrides
+automatically. `Locales/enUS.lua` supplies English defaults on every client,
+including English (US/UK). You do not need to edit `PetPantry.lua`.
 
-The German file contains a few starter labels and a commented entry for every
-other interface string, warning, tooltip, mood, title, sound description, and
-pet dialogue line. It is a translation template, not a finished German translation.
+| Language | File |
+| --- | --- |
+| English defaults | `Locales/enUS.lua` |
+| German | `Locales/deDE.lua` |
+| Spanish (Spain) | `Locales/esES.lua` |
+| Spanish (Latin America) | `Locales/esMX.lua` |
+| French | `Locales/frFR.lua` |
+| Italian | `Locales/itIT.lua` |
+| Korean | `Locales/koKR.lua` |
+| Portuguese (Brazil) | `Locales/ptBR.lua` |
+| Russian | `Locales/ruRU.lua` |
+| Simplified Chinese | `Locales/zhCN.lua` |
+| Traditional Chinese | `Locales/zhTW.lua` |
+
+Every non-English file contains a commented entry for each interface string,
+warning, tooltip, mood, title, sound description, and pet dialogue line. German
+also includes a few starter labels. These are templates, not finished translations.
+An unfinished or unknown client locale keeps English defaults.
 
 ## Translate one line at a time
 
@@ -41,17 +56,18 @@ meal thresholds in `L.MILESTONES`.
 - Translate full format strings rather than joining translated word fragments.
 
 Game item names, pet names, family names, and loyalty labels come from WoW itself.
-The `FAMILY_KEYS` table maps German family names to stable internal keys; keep
-the values on the right in English. Other client languages keep the English
-catalog until a corresponding locale file is added.
+The `FAMILY_KEYS` table maps localized family names to stable internal keys;
+keep the values on the right in English. German mappings are already supplied.
+Other templates include an example for adding mappings. If a family has no mapping,
+the pet uses generic chatter/noises instead of an incorrect family-specific line.
 
 ## Test and send a translation
 
-Run `python tests/test_release.py`, then test in a German WoW Forever client.
+Run `python tests/test_release.py`, then test in a WoW Forever client using your language.
 Open `/pantry`, inspect the controls/tooltips, feed a pet, visit a food vendor,
 and check the speech bubble. Confirm long translations fit the window.
 
-Send the edited `Locales/deDE.lua` file to the addon author, or submit a GitHub
+Send the edited locale file to the addon author, or submit a GitHub
 pull request if you have repository access. The GitHub repository is currently
 private; the template is also included in the addon ZIP, so GitHub access is
 not required to translate it. Do not send your SavedVariables or account files.

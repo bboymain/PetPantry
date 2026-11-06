@@ -2,10 +2,11 @@
 
 ## 1.0.2 — Translation support
 - Moved interface text, warnings, tooltips, and pet dialogue into Locales/enUS.lua.
-- Added Locales/deDE.lua with German starter labels and a complete translation template.
-- Automatically selects German overrides on German clients; untranslated entries keep English defaults.
+- Added complete templates for German, French, Spanish (Spain and Latin America), Italian, Portuguese, Russian, Korean, and Simplified/Traditional Chinese.
+- Automatically loads overrides for the active client locale; untranslated entries keep English defaults.
+- German includes a few starter labels; other new templates initially display English until translated.
 - Preserves family-specific sounds and chatter for German pet-family names.
-- Added checks for locale loading, fallbacks, formatting placeholders, and packaged language files.
+- Added checks across every locale for loading, fallbacks, formatting placeholders, and packaged language files.
 
 ## 1.0.1 — WoW Forever compatibility fixes
 - Fixed an error when opening a food vendor by using Forever's current merchant item API.
