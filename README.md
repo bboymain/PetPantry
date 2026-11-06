@@ -48,7 +48,8 @@ that reproduces the public 1.0.0 vendor crash at line 817. The original ZIP is a
 test fixture, excluded from release packages. Real feeding, frame appearance,
 and protected-action/taint behavior still require an in-game test.
 
-Version **1.0.1 is a candidate awaiting that in-game smoke test**. It is not yet
-published to CurseForge. The release workflow is ready once the token is configured.
+Version **1.0.1** contains the Forever compatibility fixes. Automated checks pass;
+the in-game smoke test has not yet been confirmed. The CurseForge upload secret
+is configured. Check GitHub Actions and CurseForge for the release delivery status.
 
 Local working copy: `C:\Users\Matt\Documents\PetPantry`.
