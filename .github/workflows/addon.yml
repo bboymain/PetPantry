@@ -1,0 +1,79 @@
+name: Validate and release Pet Pantry
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Test and package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - name: Run regression tests
+        run: python tests/test_release.py
+      - name: Check release version
+        if: github.event_name == 'release'
+        run: |
+          version=$(sed -n 's/^## Version: *//p' PetPantry.toc | tr -d '\r')
+          test "$GITHUB_REF_NAME" = "v$version" || {
+            echo "Release tag must match TOC version: v$version"
+            exit 1
+          }
+      - name: Build ZIP without publishing
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -d -g 1.60.1
+          pandoc: 'false'
+      - name: Verify packaged addon
+        run: python tools/check_package.py .release
+      - name: Save tested ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: PetPantry-tested-zip
+          path: .release/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Upload GitHub Release to CurseForge
+    if: github.event_name == 'release'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require CurseForge upload credential
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ]; then
+            echo "::error::Add the CF_API_TOKEN repository secret before publishing."
+            exit 1
+          fi
+      - name: Package and publish
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -p 1720041 -g 1.60.1
+          pandoc: 'false'
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          GH_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}

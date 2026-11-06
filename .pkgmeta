@@ -1,0 +1,13 @@
+package-as: PetPantry
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+ignore:
+  - .github
+  - .gitignore
+  - .gitattributes
+  - README.md
+  - RELEASE-STATUS.md
+  - requirements-dev.txt
+  - tests
+  - tools
