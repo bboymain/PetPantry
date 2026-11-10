@@ -1,5 +1,11 @@
 # Pet Pantry
 
+## 1.0.3 — German translation
+- Added German interface text and pet dialogue for German WoW clients.
+- English remains the main language and fallback for untranslated entries.
+- Corrected translation placeholders and gaming terminology.
+- Added regression coverage for missing German entries falling back to English.
+
 ## 1.0.2 — Translation support
 - Moved interface text, warnings, tooltips, and pet dialogue into Locales/enUS.lua.
 - Added complete templates for German, French, Spanish (Spain and Latin America), Italian, Portuguese, Russian, Korean, and Simplified/Traditional Chinese.

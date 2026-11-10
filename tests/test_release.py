@@ -167,8 +167,21 @@ class ReleaseTests(unittest.TestCase):
                 lua.execute('SlashCmdList.PETPANTRY("")')
                 self.assertEqual(lua.eval("addonNS.L.SETTINGS"), "EINSTELLUNGEN" if locale == "deDE" else "SETTINGS")
                 self.assertTrue(lua.eval('hasText(addonNS.L.SETTINGS)'))
-                self.assertEqual(lua.eval("addonNS.L.NO_FOOD"), "No listed pet food in your bags (/pfeed)")
-                self.assertEqual(lua.eval("addonNS.L.CHATTER[1][1]"), "I could eat a murloc. Raw.")
+                self.assertEqual(lua.eval("addonNS.L.NO_FOOD"), "Kein aufgelistetes Begleiterfutter in deinen Taschen (/pfeed)" if locale == "deDE" else "No listed pet food in your bags (/pfeed)")
+                self.assertEqual(lua.eval("addonNS.L.CHATTER[1][1]"), "Ich könnte einen Murloc fressen. Roh." if locale == "deDE" else "I could eat a murloc. Raw.")
+
+    def test_english_fallback_for_omitted_german_entries(self):
+        lua = LuaRuntime()
+        lua.execute('function GetLocale() return "deDE" end')
+        namespace = lua.table()
+        lua.execute((ROOT.parent / "Locales/enUS.lua").read_text(encoding="utf-8"), "PetPantry", namespace)
+        source = (ROOT.parent / "Locales/deDE.lua").read_text(encoding="utf-8")
+        # Simulate a future untranslated label and dialogue line.
+        source = re.sub(r'^L\.(?:NO_FOOD|CHATTER\[2\]\[2\]) = .*$', '', source, flags=re.MULTILINE)
+        lua.execute(source, "PetPantry", namespace)
+        self.assertEqual(namespace.L.NO_FOOD, "No listed pet food in your bags (/pfeed)")
+        self.assertEqual(namespace.L.CHATTER[2][2], "I'm fine. Mostly.")
+        self.assertEqual(namespace.L.RESET, "Zurücksetzen")
 
     def test_partial_dialogue_translation_and_german_family_sound(self):
         lua = client('state.locale = "deDE"; function UnitCreatureFamily() return "Katze" end', translations='''
@@ -178,7 +191,7 @@ class ReleaseTests(unittest.TestCase):
         ''')
         lua.execute('''
             assert(hasText("*schnurrt* Ein Snack wäre gut."))
-            assert(addonNS.L.CHATTER[2][2] == "I'm fine. Mostly.")
+            assert(addonNS.L.CHATTER[2][2] == "Mir geht es gut. Meistens.")
             for _, family in pairs(addonNS.L.FAMILY_KEYS) do
                 assert(addonNS.L.NOISES[family] and addonNS.L.FAMILY_IDLE[family])
             end

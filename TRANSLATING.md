@@ -18,10 +18,11 @@ including English (US/UK). You do not need to edit `PetPantry.lua`.
 | Simplified Chinese | `Locales/zhCN.lua` |
 | Traditional Chinese | `Locales/zhTW.lua` |
 
-Every non-English file contains a commented entry for each interface string,
-warning, tooltip, mood, title, sound description, and pet dialogue line. German
-also includes a few starter labels. These are templates, not finished translations.
-An unfinished or unknown client locale keeps English defaults.
+German includes translations for every interface string, warning, tooltip, mood,
+title, sound description, and pet dialogue line. Other non-English files contain
+commented entries as translation templates. English remains the main language and
+fallback: only a matching client locale loads its translations, and missing entries
+or unknown client locales keep English defaults.
 
 ## Translate one line at a time
 
