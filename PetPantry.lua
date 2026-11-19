@@ -141,10 +141,14 @@ local function itemIcon(id)
 end
 
 local function setFeed(f, prefix, btn, bag, slot)
-    f:SetAttribute(prefix .. "type" .. btn, bag and "spell" or nil) -- nil falls back to "*typeN"
-    f:SetAttribute(prefix .. "spell" .. btn, FEED_PET)
-    f:SetAttribute(prefix .. "target-bag" .. btn, bag)
-    f:SetAttribute(prefix .. "target-slot" .. btn, slot)
+    local function setIfChanged(name, value)
+        -- Secure attributes are expensive to rewrite on every inventory/event refresh.
+        if f:GetAttribute(name) ~= value then f:SetAttribute(name, value) end
+    end
+    setIfChanged(prefix .. "type" .. btn, bag and "spell" or nil) -- nil falls back to "*typeN"
+    setIfChanged(prefix .. "spell" .. btn, FEED_PET)
+    setIfChanged(prefix .. "target-bag" .. btn, bag)
+    setIfChanged(prefix .. "target-slot" .. btn, slot)
 end
 
 ---------------------------------------------------------------- Hungry glow
@@ -153,7 +157,7 @@ local function updateGlow()
     for _, g in ipairs(glows) do
         if h == 1 or h == 2 then
             g:SetVertexColor(1, h == 1 and 0.1 or 0.6, 0) -- red unhappy, orange content
-            g:Show(); g.pulse:Play()
+            g:Show(); if not g.pulse:IsPlaying() then g.pulse:Play() end
         else
             g:Hide(); g.pulse:Stop()
         end
@@ -705,30 +709,45 @@ fOut:SetFromAlpha(1); fOut:SetToAlpha(0); fOut:SetDuration(0.6)
 
 xpFrame:SetScript("OnShow", function() lastXP = nil end) -- no giant "+XP" for gains made while closed
 
--- Glide toward the target instead of jumping.
-xpBar:SetScript("OnUpdate", function(self, elapsed)
+-- Only run OnUpdate while XP is actually animating, never on every idle frame.
+local function animateXP(self, elapsed)
     local v = self:GetValue()
-    if math.abs(target - v) > 0.001 then
+    if math.abs(target - v) <= 0.001 then
+        self:SetValue(target)
+        self:SetScript("OnUpdate", nil)
+    else
         self:SetValue(v + (target - v) * math.min(1, elapsed * 5))
     end
     spark:SetShown(self:GetValue() > 0.01 and self:GetValue() < 0.99)
-end)
+end
+local function updateXPAnimation()
+    local v = xpBar:GetValue()
+    if math.abs(target - v) <= 0.001 then
+        xpBar:SetValue(target)
+        spark:SetShown(target > 0.01 and target < 0.99)
+        xpBar:SetScript("OnUpdate", nil)
+    else
+        xpBar:SetScript("OnUpdate", animateXP)
+    end
+end
 
 local function drawXP()
     xpFrame:SetShown(UnitExists("pet"))
-    if not UnitExists("pet") then sweep:Stop() return end
+    if not UnitExists("pet") then sweep:Stop(); target = 0; xpBar:SetScript("OnUpdate", nil); return end
     if InCombatLockdown() then return end -- keep the last value; pet data can be hidden mid-fight
     xpLeft:SetText(L.LEVEL:format(UnitLevel("pet")))
     local xp, nextXP = petXP()
     if type(xp) ~= "number" or type(nextXP) ~= "number" then
         target = 0
         xpRight:SetText(L.XP_UNAVAILABLE)
+        updateXPAnimation()
         return
     end
     if not sweep:IsPlaying() then sweep:Play() end
     if nextXP == 0 then -- max level
         target = 1
         xpRight:SetText(L.MAX)
+        updateXPAnimation()
         return
     end
     if lastXP and nextXP == lastNext and xp > lastXP then
@@ -741,6 +760,7 @@ local function drawXP()
     lastXP, lastNext = xp, nextXP
     target = xp / nextXP
     xpRight:SetText(L.XP_PROGRESS:format(BreakUpLargeNumbers(xp), BreakUpLargeNumbers(nextXP), target * 100))
+    updateXPAnimation()
 end
 
 local function loyaltyText() -- e.g. "Loyalty Level 3 (Faithful)" -> "Faithful"
@@ -1150,6 +1170,19 @@ ev:SetScript("OnEvent", function(_, e, unit, _, spellID)
     end
     if e == "MERCHANT_SHOW" then vendorAlert() return end
     if e == "UNIT_HEALTH" then petHealth() return end -- fires constantly; skip the full refresh
+    -- These events never change feeding target or secure click bindings.
+    if e == "GET_ITEM_INFO_RECEIVED" then
+        if ui:IsShown() and tContains(db.foods, unit) then render() end
+        return
+    end
+    if e == "UNIT_PET_EXPERIENCE" then
+        if ui:IsShown() then drawXP() end
+        return
+    end
+    if e == "UNIT_PORTRAIT_UPDATE" then
+        if ui:IsShown() then drawCard() end
+        return
+    end
     if e == "PLAYER_REGEN_DISABLED" then return end -- secure state driver restores normal portrait clicks
     if ui:IsShown() then render() end
     arm()

@@ -121,6 +121,36 @@ class ReleaseTests(unittest.TestCase):
             assert(#state.chat == 2 and state.chat[2][2] == "INSTANCE_CHAT")
         ''')
 
+    def test_unrelated_events_do_not_rescan_bags_or_rewrite_secure_bindings(self):
+        lua = client('PetPantryDB = {foods = {117}}')
+        lua.execute('''
+            state.bagReads, state.attrWrites = 0, 0
+            fire("GET_ITEM_INFO_RECEIVED", 99999, true)
+            fire("UNIT_PET_EXPERIENCE")
+            fire("UNIT_PORTRAIT_UPDATE", "pet")
+            assert(state.bagReads == 0 and state.attrWrites == 0)
+            fire("BAG_UPDATE_DELAYED")
+            assert(state.bagReads > 0)
+            assert(state.attrWrites == 0) -- same food/slot, no secure attribute churn
+        ''')
+
+    def test_xp_animation_does_not_run_forever(self):
+        lua = client('function GetPetExperience() return 250, 1000 end')
+        lua.execute('''
+            SlashCmdList.PETPANTRY("")
+            local bar
+            for _, f in ipairs(state.frames) do
+                if f.kind == "StatusBar" then bar = f end
+            end
+            assert(bar and bar.scripts.OnUpdate)
+            for i = 1, 60 do
+                if bar.scripts.OnUpdate then bar.scripts.OnUpdate(bar, 0.1) end
+            end
+            assert(bar.scripts.OnUpdate == nil)
+            fire("UNIT_PET_EXPERIENCE")
+            assert(bar.scripts.OnUpdate == nil) -- unchanged XP should stay idle
+        ''')
+
     def test_non_hunter_stays_inactive(self):
         lua = client('state.class = "MAGE"')
         lua.execute('''

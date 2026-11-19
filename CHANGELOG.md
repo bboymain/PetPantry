@@ -1,5 +1,13 @@
 # Pet Pantry
 
+## 1.0.4 — Performance and more personality
+- Avoid rewriting secure click attributes when the current food and binding are unchanged.
+- Skip bag scans and click re-arming for item-info, pet portrait, and pet XP-only updates.
+- Stop XP animation's per-frame update as soon as it reaches its target.
+- Keep hungry-glow pulses running instead of restarting them on every refresh.
+- Expand original English pet dialogue across moods, meals, danger, vendors and idle chatter.
+- Added performance regression coverage; new lines use English fallback in other locales.
+
 ## 1.0.3 — German translation
 - Added German interface text and pet dialogue for German WoW clients.
 - English remains the main language and fallback for untranslated entries.
