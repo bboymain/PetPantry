@@ -1,7 +1,7 @@
 -- UI calls are simulated; protected attributes reject insecure combat writes.
 state = {pet = true, dead = false, mood = 2, combat = false, secure = false,
     hp = 100, maxHP = 100, now = 100, class = "HUNTER", merchant = "price",
-    messages = {}, chat = {}, frames = {}, tickers = {}, drivers = {}}
+    messages = {}, chat = {}, frames = {}, tickers = {}, drivers = {}, bagReads = 0, attrWrites = 0}
 unpack = unpack or table.unpack
 tinsert, tremove = table.insert, table.remove
 NUM_BAG_SLOTS, LE_PARTY_CATEGORY_INSTANCE = 4, 2
@@ -65,6 +65,7 @@ function methods:SetStatusBarTexture() self.fill = self:CreateTexture() end
 function methods:GetStatusBarTexture() return self.fill end
 function methods:SetAttribute(name, value)
     assert(not state.combat or state.secure, "insecure protected attribute write during combat: " .. name)
+    state.attrWrites = state.attrWrites + 1
     self.attributes[name] = value
 end
 function methods:GetAttribute(name) return self.attributes[name] end
@@ -138,6 +139,7 @@ C_PetInfo = {
 C_Container = {
     GetContainerNumSlots = function(bag) return bag == 0 and 2 or 0 end,
     GetContainerItemInfo = function(bag, slot)
+        state.bagReads = state.bagReads + 1
         return {itemID = slot == 1 and 117 or 2287, isLocked = state.locked}
     end,
 }
