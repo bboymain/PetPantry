@@ -2,7 +2,7 @@
 ## Title: Pet Pantry
 ## Notes: Click your pet portrait to feed it from your food priority list. /pantry
 ## Author: Matt
-## Version: 1.0.3
+## Version: 1.0.4
 ## X-Curse-Project-ID: 1720041
 ## X-Website: https://github.com/bboymain/PetPantry
 ## IconTexture: Interface\Icons\Ability_Hunter_BeastTraining
