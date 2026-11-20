@@ -1,0 +1,86 @@
+name: Publish Pet Pantry v1.0.4
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-1.0.4.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tag-and-dispatch:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Verify version and regression tests
+        run: |
+          grep -qx '## Version: 1.0.4' PetPantry.toc
+          python -m pip install -r requirements-dev.txt
+          python tests/test_release.py
+      - name: Create v1.0.4 release tag
+        run: |
+          if git rev-parse -q --verify refs/tags/v1.0.4 >/dev/null; then
+            echo "::error::v1.0.4 already exists; refusing to retag a release."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a v1.0.4 -m 'Pet Pantry 1.0.4 performance and dialogue release'
+          git push origin refs/tags/v1.0.4
+      - name: Start tagged publication run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish-1.0.4.yml --ref v1.0.4
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/tags/v1.0.4'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Verify version and run regression tests
+        run: |
+          grep -qx '## Version: 1.0.4' PetPantry.toc
+          python -m pip install -r requirements-dev.txt
+          python tests/test_release.py
+      - name: Build ZIP without uploading
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -d -g 1.60.1
+          pandoc: 'false'
+      - name: Verify packaged addon
+        run: python tools/check_package.py .release
+      - name: Require CurseForge upload credential
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          if [ -z "$CF_API_TOKEN" ]; then
+            echo "::error::CF_API_TOKEN is unavailable."
+            exit 1
+          fi
+      - name: Publish release to CurseForge and GitHub
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -p 1720041 -g 1.60.1
+          pandoc: 'false'
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          GH_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
