@@ -195,10 +195,13 @@ class ReleaseTests(unittest.TestCase):
             with self.subTest(locale=locale):
                 lua = client(f'state.locale = "{locale}"')
                 lua.execute('SlashCmdList.PETPANTRY("")')
-                self.assertEqual(lua.eval("addonNS.L.SETTINGS"), "EINSTELLUNGEN" if locale == "deDE" else "SETTINGS")
+                expected = {"deDE": "EINSTELLUNGEN", "itIT": "IMPOSTAZIONI"}.get(locale, "SETTINGS")
+                self.assertEqual(lua.eval("addonNS.L.SETTINGS"), expected)
                 self.assertTrue(lua.eval('hasText(addonNS.L.SETTINGS)'))
-                self.assertEqual(lua.eval("addonNS.L.NO_FOOD"), "Kein aufgelistetes Begleiterfutter in deinen Taschen (/pfeed)" if locale == "deDE" else "No listed pet food in your bags (/pfeed)")
-                self.assertEqual(lua.eval("addonNS.L.CHATTER[1][1]"), "Ich könnte einen Murloc fressen. Roh." if locale == "deDE" else "I could eat a murloc. Raw.")
+                no_food = {"deDE": "Kein aufgelistetes Begleiterfutter in deinen Taschen (/pfeed)", "itIT": "Nessun cibo per animali dell'elenco nelle tue borse (/pfeed)"}.get(locale, "No listed pet food in your bags (/pfeed)")
+                self.assertEqual(lua.eval("addonNS.L.NO_FOOD"), no_food)
+                chatter = {"deDE": "Ich könnte einen Murloc fressen. Roh.", "itIT": "Mangerei un murloc. Crudo."}.get(locale, "I could eat a murloc. Raw.")
+                self.assertEqual(lua.eval("addonNS.L.CHATTER[1][1]"), chatter)
 
     def test_english_fallback_for_omitted_german_entries(self):
         lua = LuaRuntime()
